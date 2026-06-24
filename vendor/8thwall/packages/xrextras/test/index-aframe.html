@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>XRExtras: A-FRAME</title>
+  <script src="https://cdn.jsdelivr.net/npm/aframe@1.7.1/dist/aframe-master.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@8thwall/engine-binary@1/dist/xr.js" async crossorigin="anonymous"
+    data-preload-chunks="slam"></script>
+  <script src="/xrextras.js"></script>
+</head>
+
+<body>
+  <script>
+    const load = () => {
+      const xrScene = `
+<a-scene xrweb xrextras-tap-recenter xrextras-almost-there xrextras-loading xrextras-runtime-error
+    xrextras-gesture-detector throw-error>
+  <a-camera position="0 3 3"></a-camera>
+  <a-box position="0 0.5 -1" material="color: #7611B6;" shadow xrextras-one-finger-rotate></a-box>
+  <a-box scale="100 2 100" position="0 -1 0" material="shader: shadow" shadow></a-box>
+</a-scene>
+      `
+
+      AFRAME.registerComponent('throw-error', {
+        init: function () {
+          // A pipeline module that throws an error after 300 frames -- illustrates the error
+          // handinling in xrweb-runtime-error.
+          const throwerrorPipelineModule = () => {
+            let frame = 0
+            return {
+              name: 'throwerror',
+              onUpdate: () => {if (++frame > 300) {throw Error('Too many frames!')} },
+            }
+          }
+          XR8.addCameraPipelineModule(throwerrorPipelineModule())
+        }
+      })
+
+      document.body.insertAdjacentHTML('beforeend', xrScene)
+    }
+    (window.XRExtras && window.XR8) ? load() : window.addEventListener('xrandextrasloaded', load)
+  </script>
+</body>
+
+</html>

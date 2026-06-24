@@ -1,0 +1,25 @@
+# dot folders
+.*/
+
+
+# vendor 
+# vendor/cd ..
+vendor/**/.git/
+
+# build artifacts
+build/
+cmake-build-*/
+dist/
+__pycache__/
+.pytest_cache/
+web/node_modules/
+web/dist/
+web/pnpm-lock.yaml
+web/pnpm-workspace.yaml
+python/build/
+python/dist/
+python/*.egg-info/
+python/ga3d/*.so
+
+# local run notes
+RESULT.md

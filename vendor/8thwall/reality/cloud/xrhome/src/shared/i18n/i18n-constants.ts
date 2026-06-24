@@ -1,0 +1,7 @@
+const LOCALE_URL_PARAM_NAME = 'lang'
+const LOCALE_COOKIE_NAME = '_locale'
+
+export {
+  LOCALE_URL_PARAM_NAME,
+  LOCALE_COOKIE_NAME,
+}

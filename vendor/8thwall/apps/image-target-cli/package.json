@@ -1,0 +1,41 @@
+{
+  "name": "@8thwall/image-target-cli",
+  "version": "1.0.0",
+  "description": "Generate 8th Wall Image Target Metadata",
+  "main":  "src/index.js",
+  "bin": {
+    "image-target-cli": "src/index.js"
+  },
+  "type": "module",
+  "scripts": {
+    "test": "npx tsc -P tsconfig.json && node --test src/*.test.js && ./test/all.sh"
+  },
+  "homepage": "https://8thwall.org",
+  "bugs": {
+    "url": "https://github.com/8thwall/8thwall/issues"
+  },
+  "keywords": [
+    "8thwall",
+    "image",
+    "targets",
+    "tracking"
+  ],
+  "files": [
+    "src/**/*"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/8thwall/8thwall.git",
+    "directory": "apps/image-target-cli"
+  },
+  "author": "8th Wall Team",
+  "license": "MIT",
+  "dependencies": {
+    "sharp": "^0.34.5"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.3",
+    "@types/sharp": "^0.31.1",
+    "typescript": "^5.9.3"
+  }
+}
