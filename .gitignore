@@ -2,24 +2,24 @@
 .*/
 
 
-# vendor 
-# vendor/cd ..
-vendor/**/.git/
+# vendor
+reference/vendor/**/.git/
 
 # build artifacts
 build/
 cmake-build-*/
 dist/
-__pycache__/
-.pytest_cache/
+*.so
 web/node_modules/
 web/dist/
 web/pnpm-lock.yaml
 web/pnpm-workspace.yaml
-python/build/
-python/dist/
-python/*.egg-info/
-python/ga3d/*.so
+src-tauri/target/
+
+# output
+results/
 
 # local run notes
 RESULT.md
+.gitnexus
+

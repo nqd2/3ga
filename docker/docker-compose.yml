@@ -1,9 +1,0 @@
-services:
-  ga3d:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    ports:
-      - "8000:8000"
-    volumes:
-      - ../dist:/app/dist

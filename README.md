@@ -59,13 +59,17 @@ queued -> ... -> failed
 ## Frontend Dev
 
 ```bash
+python/.venv/bin/uvicorn ga3d.api:app --app-dir python --reload
+
 cd web
 npm run dev
 npm test -- --run
 npm run build
 ```
 
-The Vite app provides one operator workspace for server-side input paths, edit recipe controls, processing config, job progress, and artifact downloads. Live browser splat rendering is not available in this build; the UI labels that state clearly and submits recipe JSON to the backend.
+The Vite app provides one operator workspace for server-side input paths, edit recipe controls, processing config, job progress, and artifact downloads. In dev, Vite proxies `/api` to the FastAPI backend on `127.0.0.1:8000`, so run the backend and frontend together. The app also supports local browser preview for real `.ply` and `.splat` files by parsing selected file bytes in the browser and rendering downsampled Gaussian ellipses. `.sog` browser preview is reported as unsupported unless a real SOG fixture/assets are available; processing `.sog` server-side still uses the C++ core.
+
+After a job reaches `done`, use `demo zip` to download a frontend-built package containing the generated artifacts plus a minimal Three.js collision demo. The demo loads `assets/occlusion.glb` as a static collision mesh and lets the user throw a bouncing sphere into it.
 
 ## Docker
 

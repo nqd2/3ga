@@ -1,0 +1,163 @@
+{
+  "version": 1,
+  "skills": {
+    "3d-web-experience": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/3d-web-experience/SKILL.md",
+      "computedHash": "abf349a30764951de0ff17fe6e4b0d3a5332d3682b3b97109d7a23f813406d1a"
+    },
+    "brainstorming": {
+      "source": "/home/nqd2/.agents/skills/brainstorming",
+      "sourceType": "local",
+      "computedHash": "8df9b47092524833138b58682d03f2e153a242e550d1693657afdbee0cc9cdb0"
+    },
+    "doc-coauthoring": {
+      "source": "/home/nqd2/.agents/skills/doc-coauthoring",
+      "sourceType": "local",
+      "computedHash": "b964e4c3ffe13f66f76dd7919073e60c7aec622cd8a8363bb36323188100cf8e"
+    },
+    "executing-plans": {
+      "source": "/home/nqd2/.agents/skills/executing-plans",
+      "sourceType": "local",
+      "computedHash": "2f709d1a2c7564f8ce6a9bb707e7f5451117ba80f8e8e2302662c29bc61246a6"
+    },
+    "finishing-a-development-branch": {
+      "source": "/home/nqd2/.agents/skills/finishing-a-development-branch",
+      "sourceType": "local",
+      "computedHash": "9edba9a38684c060fdc38290f640e1dc0c37de286723ac9be73bacacf7cd6f3d"
+    },
+    "frontend-design": {
+      "source": "/home/nqd2/.agents/skills/frontend-design",
+      "sourceType": "local",
+      "computedHash": "063a0e6448123cd359ad0044cc46b0e490cc7964d45ef4bb9fd842bd2ffbca67"
+    },
+    "gitnexus-cli": {
+      "source": "/home/nqd2/.agents/skills/gitnexus-cli",
+      "sourceType": "local",
+      "computedHash": "448fdf0948e512a9fbfe7b7d88264e5b4ccdb3572a697f361eae3302baa5667d"
+    },
+    "gitnexus-debugging": {
+      "source": "/home/nqd2/.agents/skills/gitnexus-debugging",
+      "sourceType": "local",
+      "computedHash": "b19e63afc02af24657ec1e55d8dbfb3097a7dd306cdd735c48ed85630381a9f6"
+    },
+    "gitnexus-exploring": {
+      "source": "/home/nqd2/.agents/skills/gitnexus-exploring",
+      "sourceType": "local",
+      "computedHash": "00016c0abbc00cb0f390cc66f68e0d4c1e47f890c3b35009a429f2fce3485fe5"
+    },
+    "gitnexus-impact-analysis": {
+      "source": "/home/nqd2/.agents/skills/gitnexus-impact-analysis",
+      "sourceType": "local",
+      "computedHash": "774374f29963260978e145c259bc297925c1eb5ae09a7bb44e0c211d696ca2ba"
+    },
+    "gitnexus-pr-review": {
+      "source": "/home/nqd2/.agents/skills/gitnexus-pr-review",
+      "sourceType": "local",
+      "computedHash": "99b5242de32fd429e4e98e354e5df88664042d1eecb3b28de92acd905146894b"
+    },
+    "gitnexus-refactoring": {
+      "source": "/home/nqd2/.agents/skills/gitnexus-refactoring",
+      "sourceType": "local",
+      "computedHash": "908e1a6a537c46bf50e77dab7c38a796be430ee038936f8714cee3e416e4dae2"
+    },
+    "karpathy-guidelines": {
+      "source": "/home/nqd2/.agents/skills/karpathy-guidelines",
+      "sourceType": "local",
+      "computedHash": "41e8ca055bbde13d240776a14a076a59614057200340c243130a76ba4e64cac8"
+    },
+    "ponytail": {
+      "source": "/home/nqd2/.agents/skills/ponytail",
+      "sourceType": "local",
+      "computedHash": "15811786f0277b0b4effe6b72cb9f3eaedefd1fe28f43f20aed3d926c10a88b1"
+    },
+    "ponytail-audit": {
+      "source": "/home/nqd2/.agents/skills/ponytail-audit",
+      "sourceType": "local",
+      "computedHash": "f0aab1aa983ee47da5e3cb6bbcfcd6123d6d790dfe48e1d9b8c731a41de943df"
+    },
+    "ponytail-review": {
+      "source": "/home/nqd2/.agents/skills/ponytail-review",
+      "sourceType": "local",
+      "computedHash": "3468ad5c20081dfe3ec8edf5b4689c112a68e62bc96eae0c1c93439775554466"
+    },
+    "receiving-code-review": {
+      "source": "/home/nqd2/.agents/skills/receiving-code-review",
+      "sourceType": "local",
+      "computedHash": "2760c85d4f4117b0006e7ba755f4bbd61f8f4c185f347999763c97f507274e30"
+    },
+    "stop-slop": {
+      "source": "/home/nqd2/.agents/skills/stop-slop",
+      "sourceType": "local",
+      "computedHash": "617bf97d33162a6bd0da4f40a97aac589de58e5a6c9cf011ed6108992210e7cb"
+    },
+    "systematic-debugging": {
+      "source": "/home/nqd2/.agents/skills/systematic-debugging",
+      "sourceType": "local",
+      "computedHash": "72e9ab72627e4fd8ed26a582e82309a98ecdc4f6e1c99418430ac05682c9e91d"
+    },
+    "threejs-animation": {
+      "source": "cloudai-x/threejs-skills",
+      "sourceType": "github",
+      "skillPath": "skills/threejs-animation/SKILL.md",
+      "computedHash": "8c50b1493812bd88f3ed0637c0c3c5d846afdb322157b67b2ffba4ce8e552835"
+    },
+    "threejs-fundamentals": {
+      "source": "cloudai-x/threejs-skills",
+      "sourceType": "github",
+      "skillPath": "skills/threejs-fundamentals/SKILL.md",
+      "computedHash": "e08d49571071f0f54ef2a76fdfcb96c16673e4fda478067727def4659feb80ca"
+    },
+    "threejs-geometry": {
+      "source": "cloudai-x/threejs-skills",
+      "sourceType": "github",
+      "skillPath": "skills/threejs-geometry/SKILL.md",
+      "computedHash": "4e5757bf80a329810545c237e557e362fa14fd3a3e6a567ec1d75435be6b2dda"
+    },
+    "threejs-interaction": {
+      "source": "cloudai-x/threejs-skills",
+      "sourceType": "github",
+      "skillPath": "skills/threejs-interaction/SKILL.md",
+      "computedHash": "988d235b7ebd85276a584c6f81ce7c801280ebc45b401017b334136dc8a7ec82"
+    },
+    "threejs-materials": {
+      "source": "cloudai-x/threejs-skills",
+      "sourceType": "github",
+      "skillPath": "skills/threejs-materials/SKILL.md",
+      "computedHash": "201cf0f3720c0ea9e415e6376b8ad389aa86b483875e87ca0e51aa2770c856aa"
+    },
+    "threejs-shaders": {
+      "source": "cloudai-x/threejs-skills",
+      "sourceType": "github",
+      "skillPath": "skills/threejs-shaders/SKILL.md",
+      "computedHash": "649ceb058edfb5cfd51e80fb3a6c57aca9bab4a9d3a03f6077aa9502be0c0771"
+    },
+    "threejs-webgl": {
+      "source": "freshtechbro/claudedesignskills",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/threejs-webgl/SKILL.md",
+      "computedHash": "9b2cfc1e6512ad6c41e4e9ba56c301d619c2cfd63722793258f4424013ec4b22"
+    },
+    "using-superpowers": {
+      "source": "/home/nqd2/.agents/skills/using-superpowers",
+      "sourceType": "local",
+      "computedHash": "e0eced9fbb205c212f420aded0c6f2bf5d5f059254679a8459b4fe72390160be"
+    },
+    "vercel-react-best-practices": {
+      "source": "/home/nqd2/.agents/skills/vercel-react-best-practices",
+      "sourceType": "local",
+      "computedHash": "3219a1944e404ffc14d1d9d6aef6dd2e3855b81387ee0a044ccbfe14d34c2357"
+    },
+    "webapp-testing": {
+      "source": "/home/nqd2/.agents/skills/webapp-testing",
+      "sourceType": "local",
+      "computedHash": "ad5b1fc52807e9afa4635e59218a026b164dc58b6c3f41b0f7c644dcd6ccf572"
+    },
+    "writing-plans": {
+      "source": "/home/nqd2/.agents/skills/writing-plans",
+      "sourceType": "local",
+      "computedHash": "bfaed11054ad8021c66860244e2d2e0d1eca483ae9f5fbfcb956e99c61f5c3d7"
+    }
+  }
+}
