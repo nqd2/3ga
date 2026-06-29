@@ -17,8 +17,12 @@ struct Uniforms {
 var<storage, read> splats: array<Splat>;
 @group(0) @binding(1)
 var<uniform> uniforms: Uniforms;
+struct VoxelOutput {
+    data: array<atomic<u32>>,
+};
+
 @group(0) @binding(2)
-var<storage, read_write> output: array<atomic<u32>>;
+var<storage, read_write> output: VoxelOutput;
 
 fn rotate_by_quat(v: vec3<f32>, q: vec4<f32>) -> vec3<f32> {
     let qv = vec3<f32>(q.y, q.z, q.w);
@@ -79,7 +83,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 let contribution = splat.sigma_alpha.w * exp(-0.5 * n2);
                 if (contribution >= uniforms.opacity_threshold) {
                     let index = u32(x) + u32(y) * uniforms.dims.x + u32(z) * uniforms.dims.x * uniforms.dims.y;
-                    atomicStore(&output[index], 1u);
+                    atomicStore(&output.data[index], 1u);
                 }
                 x = x + 1;
             }
