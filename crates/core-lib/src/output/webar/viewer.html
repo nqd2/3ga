@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>augmented-gaussian WebAR bundle</title>
+  <style>
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080c0a;color:#e8f1eb;font:13px ui-monospace,Menlo,Consolas,monospace}
+    #viewport{position:fixed;inset:0;width:100%;height:100%;display:block}
+    #hud{position:fixed;left:16px;top:16px;max-width:min(420px,calc(100vw - 32px));background:rgba(8,12,10,.82);border:1px solid #254437;padding:12px}
+    h1{margin:0 0 8px;font-size:16px;color:#8ce0bc;font-weight:700}
+    #status{margin:0 0 10px;color:#d8e9df}
+    #controls{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px}
+    button{border:1px solid #3e6b58;background:#102019;color:#e8f1eb;padding:6px 8px;font:inherit;cursor:pointer}
+    button[aria-pressed="true"]{background:#1f6b4a;border-color:#75d7ad}
+    ul{margin:8px 0 0;padding-left:18px;max-height:160px;overflow:auto}
+    li{margin:4px 0}
+    #fallback{display:none;position:fixed;inset:0;place-items:center;padding:24px;text-align:center}
+  </style>
+</head>
+<body>
+  <canvas id="viewport"></canvas>
+  <div id="fallback">WebGL is not available on this device.</div>
+  <section id="hud">
+      <h1>augmented-gaussian export</h1>
+      <p id="status">Loading manifest...</p>
+      <div id="controls">
+        <button id="toggle-scene" aria-pressed="true">Scene</button>
+        <button id="toggle-occlusion" aria-pressed="true">Occlusion</button>
+        <button id="toggle-navmesh" aria-pressed="true">NavMesh</button>
+      </div>
+      <ul id="assets"></ul>
+  </section>
+  <script src="assets/js/playcanvas.min.js"></script>
+  <script>
+    const canvas = document.getElementById('viewport');
+    const fallback = document.getElementById('fallback');
+    const statusEl = document.getElementById('status');
+    const assetsEl = document.getElementById('assets');
+
+    async function checkAsset(name) {
+      const response = await fetch(name);
+      if (!response.ok) throw new Error(`${name}: HTTP ${response.status}`);
+      const bytes = await response.arrayBuffer();
+      const item = document.createElement('li');
+      item.textContent = `${name} (${bytes.byteLength} bytes)`;
+      assetsEl.appendChild(item);
+      return bytes.byteLength;
+    }
+
+    function hasWebGL() {
+      try {
+        return !!(window.WebGLRenderingContext && (canvas.getContext('webgl2') || canvas.getContext('webgl')));
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function setVisible(entity, visible) {
+      if (!entity) return;
+      entity.enabled = visible;
+    }
+
+    function fitCamera(camera, bounds) {
+      const min = bounds?.min || { x: -2, y: -1, z: -2 };
+      const max = bounds?.max || { x: 2, y: 2, z: 2 };
+      const center = new pc.Vec3((min.x + max.x) * 0.5, (min.y + max.y) * 0.5, (min.z + max.z) * 0.5);
+      const size = new pc.Vec3(max.x - min.x, max.y - min.y, max.z - min.z);
+      const radius = Math.max(size.length() * 0.55, 2);
+      camera.setPosition(center.x + radius, center.y + radius * 0.75, center.z + radius);
+      camera.lookAt(center);
+      return { center, radius };
+    }
+
+    function addOrbit(canvas, camera, target, radius) {
+      let dragging = false;
+      let lastX = 0;
+      let lastY = 0;
+      let yaw = Math.PI * 0.25;
+      let pitch = Math.PI * 0.22;
+      let distance = radius * 2.2;
+      function update() {
+        pitch = Math.max(-1.2, Math.min(1.2, pitch));
+        distance = Math.max(radius * 0.4, Math.min(radius * 8, distance));
+        const cp = Math.cos(pitch);
+        camera.setPosition(
+          target.x + Math.sin(yaw) * cp * distance,
+          target.y + Math.sin(pitch) * distance,
+          target.z + Math.cos(yaw) * cp * distance
+        );
+        camera.lookAt(target);
+      }
+      canvas.addEventListener('pointerdown', (event) => {
+        dragging = true;
+        lastX = event.clientX;
+        lastY = event.clientY;
+        canvas.setPointerCapture(event.pointerId);
+      });
+      canvas.addEventListener('pointermove', (event) => {
+        if (!dragging) return;
+        yaw -= (event.clientX - lastX) * 0.008;
+        pitch -= (event.clientY - lastY) * 0.006;
+        lastX = event.clientX;
+        lastY = event.clientY;
+        update();
+      });
+      canvas.addEventListener('pointerup', () => { dragging = false; });
+      canvas.addEventListener('wheel', (event) => {
+        event.preventDefault();
+        distance *= Math.exp(event.deltaY * 0.001);
+        update();
+      }, { passive: false });
+      update();
+    }
+
+    function loadContainer(app, root, name, url) {
+      return new Promise((resolve, reject) => {
+        if (!url) return resolve(null);
+        const asset = new pc.Asset(name, 'container', { url });
+        asset.ready((loaded) => {
+          const entity = loaded.resource.instantiateRenderEntity();
+          entity.name = name;
+          root.addChild(entity);
+          resolve(entity);
+        });
+        asset.on('error', (err) => reject(new Error(`${url}: ${err}`)));
+        app.assets.add(asset);
+        app.assets.load(asset);
+      });
+    }
+
+    function loadGsplat(app, root, url) {
+      return new Promise((resolve, reject) => {
+        if (!url) return resolve(null);
+        const asset = new pc.Asset('scene', 'gsplat', { url });
+        asset.ready((loaded) => {
+          const entity = new pc.Entity('scene');
+          entity.addComponent('gsplat', { asset: loaded, unified: true });
+          root.addChild(entity);
+          resolve(entity);
+        });
+        asset.on('error', (err) => reject(new Error(`${url}: ${err}`)));
+        app.assets.add(asset);
+        app.assets.load(asset);
+      });
+    }
+
+    (async () => {
+      if (!window.pc || !hasWebGL()) {
+        fallback.style.display = 'grid';
+        throw new Error('WebGL unavailable');
+      }
+      const manifestResponse = await fetch('manifest.json');
+      if (!manifestResponse.ok) throw new Error(`manifest.json: HTTP ${manifestResponse.status}`);
+      const manifest = await manifestResponse.json();
+      const names = [
+        manifest.artifacts.scene,
+        manifest.artifacts.collisionMeshJson,
+        manifest.artifacts.occlusionGlb,
+        manifest.artifacts.navmeshGlb,
+        manifest.artifacts.navmeshBin
+      ].filter(Boolean);
+      await Promise.all(names.map(checkAsset));
+
+      const app = new pc.Application(canvas, {
+        graphicsDeviceOptions: { alpha: false, antialias: true, preserveDrawingBuffer: true }
+      });
+      app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
+      app.setCanvasResolution(pc.RESOLUTION_AUTO);
+      window.addEventListener('resize', () => app.resizeCanvas());
+
+      const camera = new pc.Entity('camera');
+      camera.addComponent('camera', { clearColor: new pc.Color(0.04, 0.06, 0.05), farClip: 5000 });
+      app.root.addChild(camera);
+      const light = new pc.Entity('key-light');
+      light.addComponent('light', { type: 'directional', intensity: 1.2 });
+      light.setEulerAngles(45, 35, 0);
+      app.root.addChild(light);
+
+      const root = new pc.Entity('processed-assets');
+      app.root.addChild(root);
+      app.start();
+
+      const view = fitCamera(camera, manifest.bounds);
+      addOrbit(canvas, camera, view.center, view.radius);
+      const [sceneEntity, occlusionEntity, navmeshEntity] = await Promise.all([
+        loadGsplat(app, root, manifest.artifacts.scene),
+        loadContainer(app, root, 'occlusion', manifest.artifacts.occlusionGlb),
+        loadContainer(app, root, 'navmesh', manifest.artifacts.navmeshGlb)
+      ]);
+
+      document.getElementById('toggle-scene').onclick = (event) => {
+        const pressed = event.currentTarget.getAttribute('aria-pressed') !== 'true';
+        event.currentTarget.setAttribute('aria-pressed', String(pressed));
+        setVisible(sceneEntity, pressed);
+      };
+      document.getElementById('toggle-occlusion').onclick = (event) => {
+        const pressed = event.currentTarget.getAttribute('aria-pressed') !== 'true';
+        event.currentTarget.setAttribute('aria-pressed', String(pressed));
+        setVisible(occlusionEntity, pressed);
+      };
+      document.getElementById('toggle-navmesh').onclick = (event) => {
+        const pressed = event.currentTarget.getAttribute('aria-pressed') !== 'true';
+        event.currentTarget.setAttribute('aria-pressed', String(pressed));
+        setVisible(navmeshEntity, pressed);
+      };
+
+      statusEl.textContent = `Loaded ${names.length} assets`;
+      document.body.dataset.loaded = 'true';
+    })().catch((error) => {
+      statusEl.textContent = `Load failed: ${error.message}`;
+      document.body.dataset.loaded = 'false';
+    });
+  </script>
+</body>
+</html>
