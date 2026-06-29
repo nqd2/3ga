@@ -1,3 +1,0 @@
-{
-  "_comment": "NOTE(christoph): This file is required for the ESLint VSCode plugin. Dependencies are managed in bzl/npmpackage/eslint."
-}

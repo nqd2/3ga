@@ -1,5 +1,0 @@
-test/love.jpg
-flat
-y
-tmp
-default-crop

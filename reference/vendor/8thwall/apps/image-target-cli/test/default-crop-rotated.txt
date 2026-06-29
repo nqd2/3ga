@@ -1,5 +1,0 @@
-test/tower.jpg
-flat
-y
-tmp
-default-crop-rotated

@@ -1,5 +1,0 @@
-const BASE_TABLET_SCALE = 0.5
-
-export {
-  BASE_TABLET_SCALE,
-}

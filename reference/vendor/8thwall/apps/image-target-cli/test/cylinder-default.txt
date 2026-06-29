@@ -1,8 +1,0 @@
-test/love.jpg
-cylinder
-mm
-1000
-300
-y
-tmp
-cylinder

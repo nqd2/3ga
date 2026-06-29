@@ -1,5 +1,0 @@
-
-exports_files([
-    "history-of-scheduled-pipelines.patch",
-    "python-gitlab.BUILD",
-])
