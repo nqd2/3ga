@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "source": {
+    "format": "splat",
+    "splatCount": 500000,
+    "keptCount": 500000
+  },
+  "alignment": {
+    "unitScale": 1.0,
+    "origin": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "rotationQuatWxyz": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "bounds": {
+    "min": {
+      "x": -3.3368964,
+      "y": -0.13689834,
+      "z": -3.3101108
+    },
+    "max": {
+      "x": 3.2568965,
+      "y": 3.2968981,
+      "z": 3.150111
+    }
+  },
+  "artifacts": {
+    "manifest": "manifest.json",
+    "indexHtml": "index.html",
+    "scene": "scene.sog",
+    "collisionMeshJson": "collision_mesh.json",
+    "occlusionGlb": "occlusion.glb",
+    "navmeshGlb": null,
+    "navmeshBin": null,
+    "webarZip": null
+  },
+  "metrics": {
+    "decodeMs": 187,
+    "alignmentMs": 0,
+    "voxelMs": 503,
+    "cpuVoxelMs": 503,
+    "gpuVoxelMs": 1541,
+    "gpuVoxelSpeedup": 0.3264114211550941,
+    "voxelBackend": "cpu",
+    "cpuGpuVoxelMismatches": 0,
+    "fillMs": 0,
+    "carveMs": 0,
+    "meshMs": 0,
+    "navmeshMs": 0,
+    "exportMs": 1010,
+    "sourceBytes": 16000000,
+    "sceneSogBytes": 3256881,
+    "optimizedGlbBytes": 58488,
+    "sourceToOptimizedGlbRatio": 273.5603884557516,
+    "optimizedGlbToSourceRatio": 0.0036555,
+    "sourceToWebarZipRatio": null,
+    "webarZipToSourceRatio": null,
+    "collisionTrianglesBeforeMerge": 1600,
+    "collisionTrianglesAfterMerge": 1600,
+    "navmeshTriangles": 0,
+    "webarZipBytes": 0,
+    "geometricErrorSampleCount": 4096,
+    "geometricErrorMean": 0.5436373,
+    "geometricErrorRms": 0.6713844,
+    "geometricErrorP95": 1.2800001
+  }
+}

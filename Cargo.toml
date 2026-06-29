@@ -1,0 +1,32 @@
+[workspace]
+resolver = "3"
+members = [
+"crates/core-lib",
+"crates/cli",
+"apps/gui/src-tauri",
+]
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+version = "0.1.0"
+
+[workspace.dependencies]
+augmented-gaussian-core = { path = "crates/core-lib" }
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+tauri = { version = "2", features = [] }
+tauri-build = { version = "2", features = [] }
+tempfile = "3.15"
+glam = { version = "0.30", features = ["serde"] }
+mcubes = "0.1.7"
+lin_alg = "1.3.5"
+rerecast = "0.3.2"
+zip = { version = "2.4", default-features = false, features = ["deflate"] }
+bytemuck = { version = "1.21", features = ["derive"] }
+image = { version = "0.25", default-features = false, features = ["png", "webp"] }
+pollster = "0.3"
+wgpu = "0.20"

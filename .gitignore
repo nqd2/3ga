@@ -3,23 +3,42 @@
 
 
 # vendor
-reference/vendor/**/.git/
+reference/
 
 # build artifacts
 build/
 cmake-build-*/
 dist/
+target/
 *.so
 web/node_modules/
 web/dist/
+apps/gui/node_modules/
+apps/gui/dist/
+apps/gui/test-results/
 web/pnpm-lock.yaml
 web/pnpm-workspace.yaml
 src-tauri/target/
+apps/gui/src-tauri/target/
 
 # output
 results/
+!docs/evaluation/results/
+!docs/evaluation/results/**/
+docs/evaluation/results/**/scene.splat
+docs/evaluation/results/**/scene.sog
+docs/evaluation/results/**/collision_mesh.json
+docs/evaluation/results/**/*.glb
+docs/evaluation/results/**/*.bin
+docs/evaluation/results/**/*.zip
+docs/evaluation/results/**/index.html
+docs/evaluation/results/**/assets/
+!docs/evaluation/results/**/manifest.json
+!docs/evaluation/results/summary.csv
+!docs/evaluation/results/summary.json
 
 # local run notes
 RESULT.md
-.gitnexus
+.gitnexus/
+/docs/examples/
 

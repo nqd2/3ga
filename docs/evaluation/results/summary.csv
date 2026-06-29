@@ -1,0 +1,4 @@
+scene,splat_count,cpu_voxel_ms,gpu_voxel_ms,gpu_voxel_speedup,cpu_gpu_voxel_mismatches,collision_triangles_after_merge,export_ms,scene_sog_bytes,optimized_glb_bytes,source_to_optimized_glb_ratio
+bench-500k,500000,503,1541,0.3264114211550941,0,1600,1010,3256881,58488,273.5603884557516
+bench-5m,5000000,4949,2216,2.233303249097473,0,6272,9310,27374976,226684,705.8283778299307
+bench-10m,10000000,10564,3960,2.6676767676767676,0,9248,19696,53935571,333820,958.600443352705
