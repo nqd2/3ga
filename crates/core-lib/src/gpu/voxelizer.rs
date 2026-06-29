@@ -258,9 +258,7 @@ mod tests {
             opacity_threshold: 0.2,
         };
         let cpu = crate::voxel::voxelize_cpu(&table, params).unwrap();
-        let Ok(gpu) = voxelize_gpu_blocking(&table, params, None) else {
-            return;
-        };
+        let gpu = voxelize_gpu_blocking(&table, params, None).unwrap();
         assert_eq!(cpu.mismatch_count(&gpu), 0);
     }
 }

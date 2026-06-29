@@ -83,7 +83,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                 let contribution = splat.sigma_alpha.w * exp(-0.5 * n2);
                 if (contribution >= uniforms.opacity_threshold) {
                     let index = u32(x) + u32(y) * uniforms.dims.x + u32(z) * uniforms.dims.x * uniforms.dims.y;
-                    atomicStore(&output.data[index], 1u);
+                    let p: ptr<storage, atomic<u32>, read_write> = &output.data[index];
+                    atomicStore(p, 1u);
                 }
                 x = x + 1;
             }
