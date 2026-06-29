@@ -110,3 +110,23 @@ pub fn preview_metadata(path: String) -> Result<serde_json::Value, String> {
         "bytes": metadata.len()
     }))
 }
+
+pub fn open_webar_viewer(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    let absolute_path = std::fs::canonicalize(&path)
+        .map_err(|err| format!("failed to resolve absolute path for '{}': {}", path, err))?;
+    let path_str = absolute_path.to_string_lossy();
+    let asset_url = format!("asset://localhost{}", path_str);
+    let parsed_url = tauri::Url::parse(&asset_url).map_err(|err| err.to_string())?;
+    
+    let _window = tauri::WebviewWindowBuilder::new(
+        &app,
+        "webar-viewer",
+        tauri::WebviewUrl::External(parsed_url),
+    )
+    .title("WebAR Viewer Preview")
+    .inner_size(1024.0, 768.0)
+    .build()
+    .map_err(|e| e.to_string())?;
+    
+    Ok(())
+}

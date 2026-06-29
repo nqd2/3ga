@@ -31,6 +31,11 @@ fn preview_metadata(path: String) -> Result<serde_json::Value, String> {
     commands::preview_metadata(path)
 }
 
+#[tauri::command]
+fn open_webar_viewer(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    commands::open_webar_viewer(app, path)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let wgpu_ctx = augmented_gaussian_core::gpu::init_wgpu();
@@ -43,7 +48,8 @@ pub fn run() {
             preview_metadata,
             process_job,
             cancel_job,
-            save_bundle
+            save_bundle,
+            open_webar_viewer
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

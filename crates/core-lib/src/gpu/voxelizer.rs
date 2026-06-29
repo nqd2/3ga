@@ -49,7 +49,7 @@ pub async fn voxelize_gpu(
                     &wgpu::DeviceDescriptor {
                         label: Some("augmented-gaussian voxel device"),
                         required_features: wgpu::Features::empty(),
-                        required_limits: wgpu::Limits::downlevel_defaults(),
+                        required_limits: adapter.limits(),
                     },
                     None,
                 )
@@ -117,6 +117,15 @@ pub async fn voxelize_gpu(
     };
 
     let output_bytes = (grid.cell_count() * std::mem::size_of::<u32>()) as u64;
+    let max_buffer_size = device.limits().max_buffer_size;
+    let max_storage_binding = device.limits().max_storage_buffer_binding_size as u64;
+    if output_bytes > max_buffer_size || output_bytes > max_storage_binding {
+        return Err(AgError::InvalidInput(format!(
+            "Voxel grid size ({} bytes) exceeds GPU limits (max_buffer_size: {}, max_storage_buffer_binding_size: {})",
+            output_bytes, max_buffer_size, max_storage_binding
+        )));
+    }
+
     let zero_output = vec![0u32; grid.cell_count()];
     let output_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("voxel output"),
@@ -130,7 +139,7 @@ pub async fn voxelize_gpu(
         mapped_at_creation: false,
     });
 
-    let max_binding = wgpu::Limits::downlevel_defaults().max_storage_buffer_binding_size as usize;
+    let max_binding = device.limits().max_storage_buffer_binding_size as usize;
     let max_splats_per_chunk = (max_binding / std::mem::size_of::<GpuSplat>()).clamp(1, 1_000_000);
     for start in (0..table.len()).step_by(max_splats_per_chunk) {
         let end = (start + max_splats_per_chunk).min(table.len());

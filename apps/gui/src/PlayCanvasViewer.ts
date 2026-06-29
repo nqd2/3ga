@@ -1,6 +1,6 @@
 import * as pc from 'playcanvas';
 import { CameraController } from './CameraController';
-import { calibrationPlane, intersectRayPlane, roundPoint, type Bounds } from './calibration';
+import { calibrationPlane, intersectRayPlane, roundPoint, drawCalibrationOverlay, type Bounds } from './calibration';
 import { type Point3 } from './recipe';
 
 export class PlayCanvasViewer {
@@ -11,8 +11,13 @@ export class PlayCanvasViewer {
   private gsplatEntity: pc.Entity | null = null;
   private gsplatAsset: pc.Asset | null = null;
 
+  private floorPoints: [Point3, Point3, Point3] = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  private scalePoints: [Point3, Point3] = [[0, 0, 0], [0, 0, 0]];
+  private bounds?: Bounds;
+
   constructor(canvas: HTMLCanvasElement, bounds?: Bounds, sourceUrl?: string | null) {
     this.canvas = canvas;
+    this.bounds = bounds;
     this.app = new pc.Application(canvas, {
       graphicsDeviceOptions: { alpha: false },
     });
@@ -45,7 +50,18 @@ export class PlayCanvasViewer {
 
   private onUpdate = (dt: number) => {
     this.controller.update(dt);
+    drawCalibrationOverlay(this.app, this.floorPoints, this.scalePoints, this.bounds);
   };
+
+  public updateCalibration(
+    floorPoints: [Point3, Point3, Point3],
+    scalePoints: [Point3, Point3],
+    bounds?: Bounds
+  ) {
+    this.floorPoints = floorPoints;
+    this.scalePoints = scalePoints;
+    this.bounds = bounds;
+  }
 
   public fitBounds(bounds?: Bounds) {
     this.controller.fitBounds(bounds);

@@ -23,19 +23,7 @@ apps/gui/src-tauri/target/
 
 # output
 results/
-!docs/evaluation/results/
-!docs/evaluation/results/**/
-docs/evaluation/results/**/scene.splat
-docs/evaluation/results/**/scene.sog
-docs/evaluation/results/**/collision_mesh.json
-docs/evaluation/results/**/*.glb
-docs/evaluation/results/**/*.bin
-docs/evaluation/results/**/*.zip
-docs/evaluation/results/**/index.html
-docs/evaluation/results/**/assets/
-!docs/evaluation/results/**/manifest.json
-!docs/evaluation/results/summary.csv
-!docs/evaluation/results/summary.json
+docs/evaluation/results/
 
 # local run notes
 RESULT.md
