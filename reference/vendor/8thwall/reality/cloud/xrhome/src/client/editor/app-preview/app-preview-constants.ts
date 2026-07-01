@@ -1,5 +1,0 @@
-const INLINE_SIMULATOR_SESSION_ID = 'local'
-
-export {
-  INLINE_SIMULATOR_SESSION_ID,
-}

@@ -12,6 +12,12 @@
       "sourceType": "local",
       "computedHash": "8df9b47092524833138b58682d03f2e153a242e550d1693657afdbee0cc9cdb0"
     },
+    "caveman": {
+      "source": "juliusbrussee/caveman",
+      "sourceType": "github",
+      "skillPath": "skills/caveman/SKILL.md",
+      "computedHash": "1902fa0b569912d0c05736d8d98a72097d9b82719aac88c0c1d03bb546f9176d"
+    },
     "doc-coauthoring": {
       "source": "/home/nqd2/.agents/skills/doc-coauthoring",
       "sourceType": "local",
@@ -66,6 +72,12 @@
       "source": "/home/nqd2/.agents/skills/karpathy-guidelines",
       "sourceType": "local",
       "computedHash": "41e8ca055bbde13d240776a14a076a59614057200340c243130a76ba4e64cac8"
+    },
+    "playcanvas-engine": {
+      "source": "freshtechbro/claudedesignskills",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/playcanvas-engine/SKILL.md",
+      "computedHash": "173000db3829b3196452f888acb5efdb62d009687e52c5b95830ec6cbc9cc6e9"
     },
     "ponytail": {
       "source": "/home/nqd2/.agents/skills/ponytail",

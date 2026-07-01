@@ -3,23 +3,30 @@
 
 
 # vendor
-reference/vendor/**/.git/
+reference/
 
 # build artifacts
 build/
 cmake-build-*/
 dist/
+target/
 *.so
 web/node_modules/
 web/dist/
+apps/gui/node_modules/
+apps/gui/dist/
+apps/gui/test-results/
 web/pnpm-lock.yaml
 web/pnpm-workspace.yaml
 src-tauri/target/
+apps/gui/src-tauri/target/
 
 # output
 results/
+docs/evaluation/results/
 
 # local run notes
 RESULT.md
-.gitnexus
+.gitnexus/
+/docs/examples/
 

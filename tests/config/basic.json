@@ -1,0 +1,31 @@
+{
+  "voxel": {
+    "backend": "cpu",
+    "size": 0.1,
+    "opacityThreshold": 0.1
+  },
+  "voxelFill": {
+    "mode": "none",
+    "dilationSize": 0.0
+  },
+  "voxelCarve": {
+    "enabled": false,
+    "agentHeight": 1.6,
+    "agentRadius": 0.2,
+    "seedPos": [0.0, 0.0, 0.0]
+  },
+  "mesh": {
+    "mode": "faces"
+  },
+  "navmesh": {
+    "enabled": true,
+    "agentHeight": 1.6,
+    "agentRadius": 0.2,
+    "maxSlopeDegrees": 45.0,
+    "cellSize": 0.1,
+    "cellHeight": 0.05,
+    "walkableClimb": 0.25,
+    "minRegionSize": 4,
+    "mergeRegionSize": 12
+  }
+}

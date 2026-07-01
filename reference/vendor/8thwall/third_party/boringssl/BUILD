@@ -1,1 +1,0 @@
-exports_files(["boringssl-51bd4554d-230301_132340-windows_fix.patch"])

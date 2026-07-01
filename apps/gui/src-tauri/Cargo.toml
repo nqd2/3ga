@@ -1,0 +1,23 @@
+[package]
+name = "augmented-gaussian-gui"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lib]
+name = "augmented_gaussian_gui_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+augmented-gaussian-core.workspace = true
+glam.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tauri = { workspace = true, features = ["protocol-asset"] }
+tauri-plugin-dialog = "2"
+
+[dev-dependencies]
+tempfile.workspace = true

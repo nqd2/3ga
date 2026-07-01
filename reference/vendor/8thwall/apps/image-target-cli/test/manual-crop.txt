@@ -1,9 +1,0 @@
-test/love.jpg
-flat
-n
-portrait
-172
-150
-480
-tmp
-manual-crop
