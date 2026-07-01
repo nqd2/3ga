@@ -1,4 +1,4 @@
-use crate::gpu::{WgpuContext, VOXEL_SHADER};
+use crate::gpu::{VOXEL_SHADER, WgpuContext};
 use bytemuck::{Pod, Zeroable};
 use std::borrow::Cow;
 

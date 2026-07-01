@@ -13,6 +13,11 @@ tauri-build.workspace = true
 
 [dependencies]
 augmented-gaussian-core.workspace = true
+glam.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tauri = { workspace = true, features = ["protocol-asset"] }
+tauri-plugin-dialog = "2"
+
+[dev-dependencies]
+tempfile.workspace = true

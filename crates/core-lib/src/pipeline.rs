@@ -1,19 +1,19 @@
-use crate::alignment::bake_alignment;
-use crate::config::{EditOperation, ProcessConfig, RecipeBundle, VoxelBackend};
+use crate::alignment::{AlignmentTransform, bake_alignment};
+use crate::config::{EditOperation, ProcessConfig, RecipeBundle, VoxelBackend, VoxelCarveConfig};
 use crate::error::{AgError, AgResult};
 use crate::evaluation::mesh_error_against_splat_centers;
 use crate::filters::{
-    filter_box, filter_cluster, filter_floaters_by_voxel_contribution, filter_nan,
-    filter_opacity_min, filter_sphere,
+    filter_box, filter_cluster_with_stats, filter_floaters_by_voxel_contribution_with_stats,
+    filter_nan, filter_opacity_min, filter_sphere,
 };
 use crate::glb::{write_mesh_glb, write_navmesh_bin};
 use crate::gpu::voxelize_gpu_blocking;
 use crate::manifest::{AlignmentManifest, ArtifactManifest, Manifest, Metrics, SourceStats};
-use crate::math::Vec3;
+use crate::math::{Bounds, Vec3};
 use crate::mesh::{Mesh, extract_mesh};
 use crate::navmesh::bake_navmesh;
 use crate::readers::{read_source, write_sog_bundle};
-use crate::voxel::{VoxelParams, carve_grid, fill_grid, voxelize_cpu};
+use crate::voxel::{VoxelParams, carve_grid_with_status, fill_grid_with_status, voxelize_cpu};
 use crate::webar::write_webar_zip;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -81,34 +81,66 @@ pub fn process_file_with_cancel_and_progress(
     let start = Instant::now();
     let alignment_transform = bake_alignment(&mut table, recipe.alignment_recipe.as_ref())?;
     let alignment_ms = start.elapsed().as_millis();
+    let aligned_carve_config = aligned_voxel_carve_config(&config.voxel_carve, alignment_transform);
     progress("filters");
     table = filter_nan(&table)?;
+    let mut collision_warnings = Vec::new();
+    let mut filter_cluster_input_count = 0usize;
+    let mut filter_cluster_output_count = 0usize;
+    let mut filter_cluster_removed_count = 0usize;
+    let mut filter_cluster_requested_seed = None;
+    let mut filter_cluster_resolved_seed = None;
+    let mut filter_cluster_seed_resolved = false;
+    let mut filter_cluster_occupied_cells = 0usize;
+    let mut filter_cluster_cells = 0usize;
+    let mut floater_filter_input_count = 0usize;
+    let mut floater_filter_output_count = 0usize;
+    let mut floater_filter_removed_count = 0usize;
     if let Some(edit_recipe) = &recipe.edit_recipe {
         for op in &edit_recipe.operations {
             match op {
                 EditOperation::SelectAll
                 | EditOperation::SelectNone
-                | EditOperation::FilterFloatersByVoxelContribution => {}
+                | EditOperation::FilterFloatersByVoxelContribution { .. } => {}
                 EditOperation::FilterOpacity { min } => {
                     table = filter_opacity_min(&table, *min)?;
                 }
                 EditOperation::FilterBox { min, max } => {
-                    table = filter_box(&table, Vec3::from_array(*min), Vec3::from_array(*max))?;
+                    let (min, max) = aligned_filter_box(alignment_transform, *min, *max);
+                    table = filter_box(&table, min, max)?;
                 }
                 EditOperation::FilterSphere { center, radius } => {
-                    table = filter_sphere(&table, Vec3::from_array(*center), *radius)?;
+                    let center = alignment_transform.apply_point(Vec3::from_array(*center));
+                    table = filter_sphere(&table, center, *radius * alignment_transform.scale)?;
                 }
                 EditOperation::FilterCluster {
                     coarse_voxel_size,
                     opacity_threshold,
                     seed_pos,
+                    min_contribution,
                 } => {
-                    table = filter_cluster(
+                    let outcome = filter_cluster_with_stats(
                         &table,
                         *coarse_voxel_size,
                         *opacity_threshold,
-                        Vec3::from_array(*seed_pos),
+                        alignment_transform.apply_point(Vec3::from_array(*seed_pos)),
+                        *min_contribution,
                     )?;
+                    filter_cluster_input_count += outcome.input_count;
+                    filter_cluster_output_count = outcome.output_count;
+                    filter_cluster_removed_count += outcome.removed_count;
+                    filter_cluster_requested_seed = Some(outcome.requested_seed);
+                    filter_cluster_resolved_seed = Some(outcome.resolved_seed);
+                    filter_cluster_seed_resolved |= outcome.seed_was_resolved;
+                    filter_cluster_occupied_cells = outcome.occupied_cells;
+                    filter_cluster_cells = outcome.cluster_cells;
+                    if outcome.seed_was_resolved {
+                        collision_warnings.push(format!(
+                            "filterCluster seed resolved from {:?} to nearest occupied voxel {:?}",
+                            outcome.requested_seed, outcome.resolved_seed
+                        ));
+                    }
+                    table = outcome.table;
                 }
             }
         }
@@ -122,18 +154,25 @@ pub fn process_file_with_cancel_and_progress(
     };
     let start = Instant::now();
     let mut cpu_grid = voxelize_cpu(&table, voxel_params)?;
-    if recipe
-        .edit_recipe
-        .as_ref()
-        .map(|recipe| {
-            recipe
-                .operations
-                .iter()
-                .any(|op| matches!(op, EditOperation::FilterFloatersByVoxelContribution))
+    if let Some(min_contribution) = recipe.edit_recipe.as_ref().and_then(|recipe| {
+        recipe.operations.iter().find_map(|op| {
+            if let EditOperation::FilterFloatersByVoxelContribution { min_contribution } = op {
+                Some(*min_contribution)
+            } else {
+                None
+            }
         })
-        .unwrap_or(false)
-    {
-        table = filter_floaters_by_voxel_contribution(&table, &cpu_grid, voxel_params)?;
+    }) {
+        let outcome = filter_floaters_by_voxel_contribution_with_stats(
+            &table,
+            &cpu_grid,
+            voxel_params,
+            min_contribution,
+        )?;
+        floater_filter_input_count += outcome.input_count;
+        floater_filter_output_count = outcome.output_count;
+        floater_filter_removed_count += outcome.removed_count;
+        table = outcome.table;
         cpu_grid = voxelize_cpu(&table, voxel_params)?;
     }
     let cpu_voxel_ms = start.elapsed().as_millis();
@@ -167,25 +206,45 @@ pub fn process_file_with_cancel_and_progress(
 
     progress("fill");
     let start = Instant::now();
-    let filled = fill_grid(
+    let fill_outcome = fill_grid_with_status(
         &grid,
         &config.voxel_fill,
-        Vec3::from_array(config.voxel_carve.seed_pos),
+        Vec3::from_array(aligned_carve_config.seed_pos),
     );
     let fill_ms = start.elapsed().as_millis();
+    if let Some(warning) = &fill_outcome.warning {
+        collision_warnings.push(warning.clone());
+    }
+    let filled_solid_cells = fill_outcome.after_solid;
+    let filled = fill_outcome.grid;
     check_cancelled(&should_cancel)?;
 
     progress("carve");
     let start = Instant::now();
-    let carved = carve_grid(&filled, &config.voxel_carve);
+    let carve_outcome = carve_grid_with_status(&filled, &aligned_carve_config);
     let carve_ms = start.elapsed().as_millis();
+    if let Some(warning) = &carve_outcome.warning {
+        collision_warnings.push(warning.clone());
+    }
+    let carve_reachable_cells = carve_outcome.reachable_cells;
+    let carve_requested_seed = carve_outcome.requested_seed;
+    let carve_resolved_seed = carve_outcome.resolved_seed;
+    let carved_solid_cells = carve_outcome.after_solid;
+    let carved = carve_outcome.grid;
     check_cancelled(&should_cancel)?;
 
     progress("mesh");
     let start = Instant::now();
-    let collision_mesh = extract_mesh(&carved, config.mesh.mode)?;
+    let (collision_grid, crop_stats) = carved.crop_to_occupied();
+    let collision_mesh = extract_mesh(&collision_grid, config.mesh.mode)?;
     let mesh_ms = start.elapsed().as_millis();
     let triangle_count = collision_mesh.triangle_count();
+    if triangle_count == 0 {
+        collision_warnings.push(
+            "collision mesh generated 0 triangles; check voxel size, opacity threshold, bake profile, or carve/fill seed"
+                .to_string(),
+        );
+    }
     let geometric_error = mesh_error_against_splat_centers(&table, &collision_mesh);
     check_cancelled(&should_cancel)?;
 
@@ -203,6 +262,12 @@ pub fn process_file_with_cancel_and_progress(
     let navmesh_triangle_count = navmesh.as_ref().map(|m| m.triangle_count()).unwrap_or(0);
     let navmesh_glb_path = out_dir.join("navmesh.glb");
     let navmesh_bin_path = out_dir.join("navmesh.bin");
+    if config.navmesh.enabled && navmesh_triangle_count == 0 {
+        collision_warnings.push(
+            "navmesh generated 0 triangles; likely causes are a blocked seed, empty carve result, wrong floor plane, or wrong up axis"
+                .to_string(),
+        );
+    }
     if navmesh.is_some() {
         navmesh_glb_name = Some(file_name(&navmesh_glb_path));
         navmesh_bin_name = Some(file_name(&navmesh_bin_path));
@@ -229,6 +294,7 @@ pub fn process_file_with_cancel_and_progress(
             format,
             splat_count: source_count,
             kept_count: table.len(),
+            ..SourceStats::default()
         },
         alignment: AlignmentManifest {
             unit_scale: alignment_transform.scale,
@@ -269,11 +335,36 @@ pub fn process_file_with_cancel_and_progress(
             }),
             voxel_backend,
             cpu_gpu_voxel_mismatches,
+            filter_cluster_input_count,
+            filter_cluster_output_count,
+            filter_cluster_removed_count,
+            filter_cluster_requested_seed,
+            filter_cluster_resolved_seed,
+            filter_cluster_seed_resolved,
+            filter_cluster_occupied_cells,
+            filter_cluster_cells,
+            floater_filter_input_count,
+            floater_filter_output_count,
+            floater_filter_removed_count,
             fill_ms,
             carve_ms,
             mesh_ms,
             navmesh_ms,
             export_ms: 0,
+            voxel_solid_cells: grid.solid_count(),
+            filled_solid_cells,
+            carved_solid_cells,
+            cropped_solid_cells: collision_grid.solid_count(),
+            voxel_grid_dims: grid.dims,
+            filled_grid_dims: filled.dims,
+            carved_grid_dims: carved.dims,
+            cropped_grid_dims: collision_grid.dims,
+            crop_min_cell: crop_stats.min_cell,
+            crop_max_cell: crop_stats.max_cell,
+            carve_reachable_cells,
+            carve_requested_seed,
+            carve_resolved_seed,
+            collision_warnings,
             source_bytes,
             scene_sog_bytes,
             optimized_glb_bytes,
@@ -385,10 +476,35 @@ fn remove_if_exists(path: &Path) -> AgResult<()> {
     }
 }
 
+fn aligned_voxel_carve_config(
+    config: &VoxelCarveConfig,
+    transform: AlignmentTransform,
+) -> VoxelCarveConfig {
+    let mut aligned = config.clone();
+    aligned.seed_pos = transform
+        .apply_point(Vec3::from_array(config.seed_pos))
+        .to_array();
+    aligned
+}
+
+fn aligned_filter_box(transform: AlignmentTransform, min: [f32; 3], max: [f32; 3]) -> (Vec3, Vec3) {
+    let min = Vec3::from_array(min);
+    let max = Vec3::from_array(max);
+    let mut bounds = Bounds::empty();
+    for x in [min.x, max.x] {
+        for y in [min.y, max.y] {
+            for z in [min.z, max.z] {
+                bounds.include(transform.apply_point(Vec3::new(x, y, z)));
+            }
+        }
+    }
+    (bounds.min, bounds.max)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::MeshMode;
+    use crate::config::{AlignmentRecipe, EditRecipe, FillMode, MeshMode};
 
     #[test]
     fn optional_artifacts_are_absent_when_manifest_says_absent() {
@@ -418,15 +534,110 @@ mod tests {
         assert!(!out.join("webar.zip").exists());
     }
 
+    #[test]
+    fn alignment_is_applied_to_downstream_seed_coordinates() {
+        let dir = tempfile::tempdir().unwrap();
+        let input = dir.path().join("scene.splat");
+        fs::write(&input, splat_bytes_at(&[[2.0, 0.0, 0.0], [4.0, 0.0, 0.0]])).unwrap();
+        let out = dir.path().join("out");
+
+        let mut config = ProcessConfig::default();
+        config.voxel.size = 0.25;
+        config.voxel.opacity_threshold = 0.05;
+        config.voxel_fill.mode = FillMode::None;
+        config.voxel_carve.enabled = false;
+        config.mesh.mode = MeshMode::Faces;
+        config.navmesh.enabled = false;
+        config.export.write_webar_zip = false;
+
+        let recipe = RecipeBundle {
+            alignment_recipe: Some(AlignmentRecipe {
+                up_axis: None,
+                floor_normal: None,
+                scale_points: Some([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]]),
+                scale_distance_meters: Some(1.0),
+                origin: None,
+            }),
+            edit_recipe: Some(EditRecipe {
+                operations: vec![EditOperation::FilterCluster {
+                    coarse_voxel_size: 0.25,
+                    opacity_threshold: 0.05,
+                    seed_pos: [2.0, 0.0, 0.0],
+                    min_contribution: 0.05,
+                }],
+            }),
+        };
+
+        let output = process_file(&input, &out, &config, &recipe).unwrap();
+
+        assert_eq!(output.manifest.source.kept_count, 1);
+        let requested_seed = output
+            .manifest
+            .metrics
+            .filter_cluster_requested_seed
+            .unwrap();
+        assert!((requested_seed[0] - 1.0).abs() < 1e-6);
+        let bounds = output.manifest.bounds.unwrap();
+        let center_x = (bounds.min.x + bounds.max.x) * 0.5;
+        assert!(
+            (center_x - 1.0).abs() < 0.05,
+            "expected the source-space seed to select the first aligned cluster, got {bounds:?}"
+        );
+    }
+
+    #[test]
+    fn object_style_config_keeps_all_splats_without_cluster_filter() {
+        let dir = tempfile::tempdir().unwrap();
+        let input = dir.path().join("object.splat");
+        fs::write(
+            &input,
+            splat_bytes_at(&[[0.0, 0.0, 0.0], [0.2, 0.0, 0.0], [0.0, 0.2, 0.0]]),
+        )
+        .unwrap();
+        let out = dir.path().join("out");
+
+        let mut config = ProcessConfig::default();
+        config.voxel.size = 0.05;
+        config.voxel.opacity_threshold = 0.1;
+        config.voxel_fill.mode = FillMode::None;
+        config.voxel_fill.dilation_size = 0.0;
+        config.voxel_carve.enabled = false;
+        config.mesh.mode = MeshMode::Smooth;
+        config.navmesh.enabled = false;
+        config.export.write_webar_zip = false;
+
+        let output = process_file(&input, &out, &config, &RecipeBundle::default()).unwrap();
+
+        assert_eq!(output.manifest.source.splat_count, 3);
+        assert_eq!(output.manifest.source.kept_count, 3);
+        assert_eq!(output.manifest.metrics.filter_cluster_input_count, 0);
+        assert_eq!(output.manifest.metrics.filter_cluster_removed_count, 0);
+        assert!(output.manifest.metrics.collision_triangles_after_merge > 0);
+        assert!(
+            output
+                .manifest
+                .metrics
+                .collision_warnings
+                .iter()
+                .all(|warning| !warning.contains("navmesh generated 0 triangles"))
+        );
+    }
+
     fn single_splat_bytes() -> Vec<u8> {
+        splat_bytes_at(&[[0.0, 0.0, 0.0]])
+    }
+
+    fn splat_bytes_at(points: &[[f32; 3]]) -> Vec<u8> {
         let mut bytes = Vec::new();
-        bytes.extend_from_slice(&0.0f32.to_le_bytes());
-        bytes.extend_from_slice(&0.0f32.to_le_bytes());
-        bytes.extend_from_slice(&0.0f32.to_le_bytes());
-        bytes.extend_from_slice(&0.3f32.to_le_bytes());
-        bytes.extend_from_slice(&0.3f32.to_le_bytes());
-        bytes.extend_from_slice(&0.3f32.to_le_bytes());
-        bytes.extend_from_slice(&[128, 128, 128, 255, 128, 128, 128, 128]);
+        for point in points {
+            bytes.extend_from_slice(&point[0].to_le_bytes());
+            bytes.extend_from_slice(&point[1].to_le_bytes());
+            bytes.extend_from_slice(&point[2].to_le_bytes());
+            bytes.extend_from_slice(&0.3f32.to_le_bytes());
+            bytes.extend_from_slice(&0.3f32.to_le_bytes());
+            bytes.extend_from_slice(&0.3f32.to_le_bytes());
+            bytes.extend_from_slice(&[128, 128, 128, 255, 255, 128, 128, 128]);
+        }
         bytes
     }
 }

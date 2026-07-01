@@ -1,5 +1,5 @@
 use crate::error::{AgError, AgResult};
-use crate::math::{Quat, Vec3, QuatExt};
+use crate::math::{Quat, QuatExt, Vec3};
 use crate::splat_table::SplatTable;
 use std::fs;
 use std::path::Path;

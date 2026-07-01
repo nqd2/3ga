@@ -1,14 +1,14 @@
 pub mod ply;
-pub mod splat;
 pub mod sog;
+pub mod splat;
 
 use crate::error::{AgError, AgResult};
 use crate::splat_table::SplatTable;
 use std::path::Path;
 
-pub use ply::{read_ply, read_ply_bytes};
-pub use splat::{read_splat, read_splat_bytes, write_splat_bytes};
+pub use ply::{PlyMetadata, read_ply, read_ply_bytes, read_ply_metadata, write_ply};
 pub use sog::{read_sog_bundle, read_sog_meta, write_sog_bundle};
+pub use splat::{read_splat, read_splat_bytes, write_splat_bytes};
 
 pub fn read_source(path: impl AsRef<Path>) -> AgResult<(SplatTable, String)> {
     let path = path.as_ref();

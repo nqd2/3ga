@@ -1,6 +1,6 @@
 use crate::config::{FillMode, VoxelCarveConfig, VoxelFillConfig};
 use crate::error::{AgError, AgResult};
-use crate::math::{Bounds, Vec3, QuatExt};
+use crate::math::{Bounds, QuatExt, Vec3};
 use crate::splat_table::SplatTable;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashSet, VecDeque};
@@ -67,6 +67,15 @@ impl VoxelGrid {
         } else {
             None
         }
+    }
+
+    pub fn world_to_cell_clamped(&self, p: Vec3) -> (usize, usize, usize) {
+        let local = (p - self.min) / self.size;
+        (
+            clamp_cell_axis(local.x, self.dims[0]),
+            clamp_cell_axis(local.y, self.dims[1]),
+            clamp_cell_axis(local.z, self.dims[2]),
+        )
     }
 
     pub fn neighbors6(&self, x: usize, y: usize, z: usize) -> Vec<(usize, usize, usize)> {
@@ -137,6 +146,98 @@ impl VoxelGrid {
     fn index(&self, x: usize, y: usize, z: usize) -> usize {
         z * self.dims[0] * self.dims[1] + y * self.dims[0] + x
     }
+
+    pub fn crop_to_occupied(&self) -> (Self, VoxelCropStats) {
+        let before_solid = self.solid_count();
+        let mut min_cell = [usize::MAX; 3];
+        let mut max_cell = [0usize; 3];
+        for (x, y, z) in self.iter_solid() {
+            min_cell[0] = min_cell[0].min(x);
+            min_cell[1] = min_cell[1].min(y);
+            min_cell[2] = min_cell[2].min(z);
+            max_cell[0] = max_cell[0].max(x);
+            max_cell[1] = max_cell[1].max(y);
+            max_cell[2] = max_cell[2].max(z);
+        }
+        if before_solid == 0 {
+            let empty = Self::new(self.min, self.size, [1, 1, 1]);
+            return (
+                empty,
+                VoxelCropStats {
+                    before_dims: self.dims,
+                    after_dims: [1, 1, 1],
+                    before_solid,
+                    after_solid: 0,
+                    min_cell: [0, 0, 0],
+                    max_cell: [0, 0, 0],
+                },
+            );
+        }
+        let dims = [
+            max_cell[0] - min_cell[0] + 1,
+            max_cell[1] - min_cell[1] + 1,
+            max_cell[2] - min_cell[2] + 1,
+        ];
+        let min = self.min
+            + Vec3::new(
+                min_cell[0] as f32 * self.size,
+                min_cell[1] as f32 * self.size,
+                min_cell[2] as f32 * self.size,
+            );
+        let mut out = Self::new(min, self.size, dims);
+        for (x, y, z) in self.iter_solid() {
+            out.set(x - min_cell[0], y - min_cell[1], z - min_cell[2], true);
+        }
+        let after_solid = out.solid_count();
+        (
+            out,
+            VoxelCropStats {
+                before_dims: self.dims,
+                after_dims: dims,
+                before_solid,
+                after_solid,
+                min_cell,
+                max_cell,
+            },
+        )
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelCropStats {
+    pub before_dims: [usize; 3],
+    pub after_dims: [usize; 3],
+    pub before_solid: usize,
+    pub after_solid: usize,
+    pub min_cell: [usize; 3],
+    pub max_cell: [usize; 3],
+}
+
+#[derive(Debug, Clone)]
+pub struct VoxelFillOutcome {
+    pub grid: VoxelGrid,
+    pub before_solid: usize,
+    pub after_solid: usize,
+    pub warning: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct VoxelCarveOutcome {
+    pub grid: VoxelGrid,
+    pub before_solid: usize,
+    pub after_solid: usize,
+    pub reachable_cells: usize,
+    pub requested_seed: [f32; 3],
+    pub resolved_seed: Option<[f32; 3]>,
+    pub warning: Option<String>,
+}
+
+fn clamp_cell_axis(value: f32, dim: usize) -> usize {
+    if dim <= 1 || !value.is_finite() {
+        return 0;
+    }
+    value.floor().clamp(0.0, (dim - 1) as f32) as usize
 }
 
 pub fn voxelize_cpu(table: &SplatTable, params: VoxelParams) -> AgResult<VoxelGrid> {
@@ -229,10 +330,25 @@ pub(crate) fn gaussian_contribution_at(table: &SplatTable, index: usize, point: 
 }
 
 pub fn fill_grid(grid: &VoxelGrid, config: &VoxelFillConfig, seed_pos: Vec3) -> VoxelGrid {
-    match config.mode {
-        FillMode::None => grid.clone(),
-        FillMode::FloorFill => floor_fill(grid),
+    fill_grid_with_status(grid, config, seed_pos).grid
+}
+
+pub fn fill_grid_with_status(
+    grid: &VoxelGrid,
+    config: &VoxelFillConfig,
+    seed_pos: Vec3,
+) -> VoxelFillOutcome {
+    let before_solid = grid.solid_count();
+    let (filled, warning) = match config.mode {
+        FillMode::None => (grid.clone(), None),
+        FillMode::FloorFill => (floor_fill(grid), None),
         FillMode::ExteriorFill => exterior_fill(grid, config.dilation_size, seed_pos),
+    };
+    VoxelFillOutcome {
+        after_solid: filled.solid_count(),
+        before_solid,
+        grid: filled,
+        warning,
     }
 }
 
@@ -253,7 +369,11 @@ fn floor_fill(grid: &VoxelGrid) -> VoxelGrid {
     out
 }
 
-fn exterior_fill(grid: &VoxelGrid, dilation_size: f32, seed_pos: Vec3) -> VoxelGrid {
+fn exterior_fill(
+    grid: &VoxelGrid,
+    dilation_size: f32,
+    seed_pos: Vec3,
+) -> (VoxelGrid, Option<String>) {
     let dilated = dilate(grid, (dilation_size / grid.size).ceil().max(0.0) as isize);
     let mut outside = HashSet::new();
     let mut queue = VecDeque::new();
@@ -287,12 +407,23 @@ fn exterior_fill(grid: &VoxelGrid, dilation_size: f32, seed_pos: Vec3) -> VoxelG
             queue.push_back(next);
         }
     }
-    if grid
-        .world_to_cell(seed_pos)
-        .map(|seed| outside.contains(&seed))
-        .unwrap_or(false)
-    {
-        return grid.clone();
+    let Some(seed_cell) = grid.world_to_cell(seed_pos) else {
+        return (
+            grid.clone(),
+            Some(
+                "voxelExternalFill skipped because the fill seed is outside grid bounds"
+                    .to_string(),
+            ),
+        );
+    };
+    if outside.contains(&seed_cell) {
+        return (
+            grid.clone(),
+            Some(
+                "voxelExternalFill skipped because the fill seed is connected to the boundary"
+                    .to_string(),
+            ),
+        );
     }
     let mut out = grid.clone();
     for z in 0..grid.dims[2] {
@@ -304,7 +435,7 @@ fn exterior_fill(grid: &VoxelGrid, dilation_size: f32, seed_pos: Vec3) -> VoxelG
             }
         }
     }
-    out
+    (out, None)
 }
 
 fn dilate(grid: &VoxelGrid, radius: isize) -> VoxelGrid {
@@ -330,15 +461,66 @@ fn dilate(grid: &VoxelGrid, radius: isize) -> VoxelGrid {
 }
 
 pub fn carve_grid(grid: &VoxelGrid, config: &VoxelCarveConfig) -> VoxelGrid {
+    carve_grid_with_status(grid, config).grid
+}
+
+pub fn carve_grid_with_status(grid: &VoxelGrid, config: &VoxelCarveConfig) -> VoxelCarveOutcome {
     if !config.enabled {
-        return grid.clone();
+        let solid = grid.solid_count();
+        return VoxelCarveOutcome {
+            grid: grid.clone(),
+            before_solid: solid,
+            after_solid: solid,
+            reachable_cells: 0,
+            requested_seed: config.seed_pos,
+            resolved_seed: None,
+            warning: None,
+        };
     }
     let seed = Vec3::from_array(config.seed_pos);
-    let Some(seed_cell) = grid.world_to_cell(seed) else {
-        return grid.clone();
+    let before_solid = grid.solid_count();
+    let Some(requested_seed_cell) = grid.world_to_cell(seed) else {
+        return VoxelCarveOutcome {
+            grid: grid.clone(),
+            before_solid,
+            after_solid: before_solid,
+            reachable_cells: 0,
+            requested_seed: config.seed_pos,
+            resolved_seed: None,
+            warning: Some("voxelCarve seed was outside grid bounds; skipping carve".to_string()),
+        };
     };
     let radius_cells = (config.agent_radius / grid.size).ceil().max(0.0) as isize;
     let half_height_cells = (config.agent_height / (2.0 * grid.size)).ceil().max(0.0) as isize;
+    let (seed_cell, warning) = if capsule_blocked(
+        grid,
+        requested_seed_cell,
+        radius_cells,
+        half_height_cells,
+    ) {
+        match nearest_unblocked_cell(grid, requested_seed_cell, radius_cells, half_height_cells) {
+            Some(cell) => (
+                cell,
+                Some("voxelCarve seed was blocked; resolved to nearest navigable cell".to_string()),
+            ),
+            None => {
+                return VoxelCarveOutcome {
+                    grid: grid.clone(),
+                    before_solid,
+                    after_solid: before_solid,
+                    reachable_cells: 0,
+                    requested_seed: config.seed_pos,
+                    resolved_seed: None,
+                    warning: Some(
+                        "voxelCarve seed was blocked after dilation with no nearby free cell; skipping carve"
+                            .to_string(),
+                    ),
+                };
+            }
+        }
+    } else {
+        (requested_seed_cell, None)
+    };
     let mut reachable = HashSet::new();
     let mut queue = VecDeque::from([seed_cell]);
     while let Some(cell) = queue.pop_front() {
@@ -361,7 +543,60 @@ pub fn carve_grid(grid: &VoxelGrid, config: &VoxelCarveConfig) -> VoxelGrid {
             out.set(x, y, z, true);
         }
     }
-    out
+    let after_solid = out.solid_count();
+    let warning = if reachable.is_empty() {
+        Some("voxelCarve found no reachable space from seed".to_string())
+    } else if after_solid == 0 {
+        Some("voxelCarve produced no bordering collision cells".to_string())
+    } else {
+        warning
+    };
+    VoxelCarveOutcome {
+        grid: out,
+        before_solid: grid.solid_count(),
+        after_solid,
+        reachable_cells: reachable.len(),
+        requested_seed: config.seed_pos,
+        resolved_seed: Some(
+            grid.cell_center(seed_cell.0, seed_cell.1, seed_cell.2)
+                .to_array(),
+        ),
+        warning,
+    }
+}
+
+fn nearest_unblocked_cell(
+    grid: &VoxelGrid,
+    seed: (usize, usize, usize),
+    radius: isize,
+    half_height: isize,
+) -> Option<(usize, usize, usize)> {
+    let search_radius = (radius.max(half_height).max(2) * 2).min(64);
+    for r in 1..=search_radius {
+        for dz in -r..=r {
+            for dy in -r..=r {
+                for dx in -r..=r {
+                    if dx.abs().max(dy.abs()).max(dz.abs()) != r {
+                        continue;
+                    }
+                    let nx = seed.0 as isize + dx;
+                    let ny = seed.1 as isize + dy;
+                    let nz = seed.2 as isize + dz;
+                    if nx < 0 || ny < 0 || nz < 0 {
+                        continue;
+                    }
+                    let cell = (nx as usize, ny as usize, nz as usize);
+                    if cell.0 >= grid.dims[0] || cell.1 >= grid.dims[1] || cell.2 >= grid.dims[2] {
+                        continue;
+                    }
+                    if !capsule_blocked(grid, cell, radius, half_height) {
+                        return Some(cell);
+                    }
+                }
+            }
+        }
+    }
+    None
 }
 
 fn capsule_blocked(
@@ -466,7 +701,7 @@ mod tests {
     fn exterior_fill_skips_when_seed_reaches_boundary() {
         let mut grid = closed_room();
         grid.set(0, 2, 2, false);
-        let filled = fill_grid(
+        let outcome = fill_grid_with_status(
             &grid,
             &VoxelFillConfig {
                 mode: FillMode::ExteriorFill,
@@ -475,7 +710,88 @@ mod tests {
             Vec3::new(2.5, 2.5, 2.5),
         );
 
-        assert_eq!(filled.solid_count(), grid.solid_count());
+        assert_eq!(outcome.grid.solid_count(), grid.solid_count());
+        assert!(outcome.warning.is_some());
+    }
+
+    #[test]
+    fn exterior_fill_skips_when_seed_is_outside_grid() {
+        let grid = closed_room();
+        let outcome = fill_grid_with_status(
+            &grid,
+            &VoxelFillConfig {
+                mode: FillMode::ExteriorFill,
+                dilation_size: 0.0,
+            },
+            Vec3::new(99.0, 99.0, 99.0),
+        );
+
+        assert_eq!(outcome.grid.solid_count(), grid.solid_count());
+        assert!(outcome.warning.is_some());
+    }
+
+    #[test]
+    fn carve_blocked_seed_without_nearby_free_cell_returns_raw_grid() {
+        let mut grid = VoxelGrid::new(Vec3::ZERO, 1.0, [3, 3, 3]);
+        for x in 0..3 {
+            for y in 0..3 {
+                for z in 0..3 {
+                    grid.set(x, y, z, true);
+                }
+            }
+        }
+
+        let outcome = carve_grid_with_status(
+            &grid,
+            &VoxelCarveConfig {
+                enabled: true,
+                agent_height: 1.0,
+                agent_radius: 0.0,
+                seed_pos: [1.5, 1.5, 1.5],
+            },
+        );
+
+        assert_eq!(outcome.grid.solid_count(), grid.solid_count());
+        assert_eq!(outcome.after_solid, grid.solid_count());
+        assert_eq!(outcome.reachable_cells, 0);
+        assert!(outcome.resolved_seed.is_none());
+        assert!(outcome.warning.is_some());
+    }
+
+    #[test]
+    fn carve_outside_seed_returns_raw_grid() {
+        let mut grid = VoxelGrid::new(Vec3::ZERO, 1.0, [3, 3, 3]);
+        grid.set(1, 1, 1, true);
+
+        let outcome = carve_grid_with_status(
+            &grid,
+            &VoxelCarveConfig {
+                enabled: true,
+                agent_height: 1.0,
+                agent_radius: 0.0,
+                seed_pos: [99.0, 99.0, 99.0],
+            },
+        );
+
+        assert_eq!(outcome.grid.solid_count(), grid.solid_count());
+        assert_eq!(outcome.after_solid, grid.solid_count());
+        assert_eq!(outcome.reachable_cells, 0);
+        assert!(outcome.resolved_seed.is_none());
+        assert!(outcome.warning.is_some());
+    }
+
+    #[test]
+    fn crop_to_occupied_removes_empty_padding() {
+        let mut grid = VoxelGrid::new(Vec3::ZERO, 1.0, [6, 5, 4]);
+        grid.set(4, 2, 1, true);
+
+        let (cropped, stats) = grid.crop_to_occupied();
+
+        assert_eq!(cropped.dims, [1, 1, 1]);
+        assert_eq!(cropped.min, Vec3::new(4.0, 2.0, 1.0));
+        assert!(cropped.get(0, 0, 0));
+        assert_eq!(stats.before_dims, [6, 5, 4]);
+        assert_eq!(stats.after_solid, 1);
     }
 
     #[test]
@@ -516,4 +832,3 @@ mod tests {
         grid
     }
 }
- 

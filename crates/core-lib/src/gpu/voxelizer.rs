@@ -1,7 +1,7 @@
 use crate::error::{AgError, AgResult};
+use crate::gpu::{GpuSplat, VOXEL_SHADER, VoxelUniforms, WgpuContext};
 use crate::splat_table::SplatTable;
 use crate::voxel::{VoxelGrid, VoxelParams, voxel_grid_for_table};
-use crate::gpu::{WgpuContext, VOXEL_SHADER, GpuSplat, VoxelUniforms};
 use std::borrow::Cow;
 use std::sync::mpsc;
 use wgpu::util::DeviceExt;
@@ -54,47 +54,50 @@ pub async fn voxelize_gpu(
                     None,
                 )
                 .await
-                .map_err(|err| AgError::InvalidInput(format!("failed to request wgpu device: {err}")))?;
+                .map_err(|err| {
+                    AgError::InvalidInput(format!("failed to request wgpu device: {err}"))
+                })?;
 
             let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("voxel shader"),
                 source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(VOXEL_SHADER)),
             });
-            let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("voxel bind group layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+            let bind_group_layout =
+                device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("voxel bind group layout"),
+                    entries: &[
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
+                            visibility: wgpu::ShaderStages::COMPUTE,
+                            ty: wgpu::BindingType::Buffer {
+                                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                                has_dynamic_offset: false,
+                                min_binding_size: None,
+                            },
+                            count: None,
                         },
-                        count: None,
-                    },
-                ],
-            });
+                    ],
+                });
             let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("voxel pipeline layout"),
                 bind_group_layouts: &[&bind_group_layout],
@@ -249,7 +252,7 @@ fn splats_for_gpu_range(table: &SplatTable, start: usize, end: usize) -> Vec<Gpu
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::math::{Quat, Vec3, QuatExt};
+    use crate::math::{Quat, QuatExt, Vec3};
 
     #[test]
     fn gpu_matches_cpu_when_adapter_available() {

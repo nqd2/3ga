@@ -1,5 +1,5 @@
 use crate::error::{AgError, AgResult};
-use crate::math::{Bounds, Quat, Vec3, QuatExt};
+use crate::math::{Bounds, Quat, QuatExt, Vec3};
 use serde::{Deserialize, Serialize};
 
 pub const SIGMA_CUTOFF: f32 = 3.0;
@@ -231,4 +231,3 @@ mod tests {
         assert!((bounds.max.z - 1.5).abs() < 1e-5);
     }
 }
- 

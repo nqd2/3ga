@@ -58,7 +58,7 @@ Recipe shape:
 ```json
 {
   "alignmentRecipe": {
-    "floorPoints": [[0, 0, 0], [1, 0, 0], [0, 0, 1]],
+    "floorNormal": [0.0, 1.0, 0.0],
     "upAxis": "y",
     "scalePoints": [[0, 0, 0], [2, 0, 0]],
     "scaleDistanceMeters": 2.0,
@@ -77,7 +77,7 @@ Recipe shape:
 }
 ```
 
-`floorPoints` uses exactly three picked points. Use `floorFitPoints` instead when fitting a plane from three or more selected points, for example `"floorFitPoints": [[0, 0, 0], [1, 0.02, 0], [0, -0.01, 1], [1, 0.01, 1]]`.
+`floorNormal` is a 3D unit vector indicating the orientation of the floor plane. The system calculates it automatically.
 `upAxis` accepts `x`, `y`, `z`, `neg-x`, `neg-y`, `neg-z`. Omit `origin` unless the scan needs a specific world origin reset.
 
 Benchmark with CPU/GPU voxel parity:
@@ -111,15 +111,14 @@ GUI workflow:
 
 1. Enter source path and output dir.
 2. Click `Load`.
-3. Pick three floor points in the PlayCanvas preview.
-4. Pick two scale endpoints and enter real distance in meters.
-5. Select up axis.
-6. Click `Bake`.
-7. Click `Save ZIP` if a second copy of the WebAR bundle is needed.
+3. Pick two scale endpoints and enter real distance in meters.
+4. Select up axis.
+5. Click `Bake`.
+6. Click `Save ZIP` if a second copy of the WebAR bundle is needed.
 
 GUI sends file paths, config JSON, and recipe JSON to the Rust backend. It does not send large mesh blobs over Tauri IPC.
 The PlayCanvas preview loads the selected source through Tauri's asset protocol, shows calibration grid/up-vector/markers, and serializes the locked alignment recipe before bake.
-Available Tauri commands: `load_source`, `preview_metadata`, `process_job`, `cancel_job`, `save_bundle`.
+Available Tauri commands: `load_source`, `process_job`, `cancel_job`, `save_bundle`, `export_edited_source`.
 
 ## Expected Output
 

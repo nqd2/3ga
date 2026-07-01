@@ -1,5 +1,5 @@
 use crate::error::{AgError, AgResult};
-use crate::math::{Quat, Vec3, QuatExt};
+use crate::math::{Quat, QuatExt, Vec3};
 use crate::splat_table::SplatTable;
 use image::ImageEncoder;
 use serde::Deserialize;
@@ -516,8 +516,7 @@ fn unpack_sog_quat(px: u8, py: u8, pz: u8, tag: u8) -> Quat {
     comps[idx[2]] = c / sqrt2;
     let used = comps.iter().map(|v| v * v).sum::<f32>();
     comps[max_comp] = (1.0 - used).max(0.0).sqrt();
-    Quat::from_wxyz(comps[0], comps[1], comps[2], comps[3])
-        .normalized()
+    Quat::from_wxyz(comps[0], comps[1], comps[2], comps[3]).normalized()
 }
 
 fn codebook_value(codebook: &[f32], index: u8, label: &str) -> AgResult<f32> {
@@ -956,8 +955,8 @@ fn sh_label(index: usize, count: usize, palette_count: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use image::codecs::png::PngEncoder;
     use image::ColorType;
+    use image::codecs::png::PngEncoder;
     use tempfile::tempdir;
     use zip::write::SimpleFileOptions;
 

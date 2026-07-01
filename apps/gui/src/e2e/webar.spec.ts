@@ -42,6 +42,7 @@ test('exported WebAR bundle page loads all declared assets', async ({ page }) =>
   try {
     await page.goto(`${url}/index.html`);
     await expect(page.locator('body')).toHaveAttribute('data-loaded', 'true');
+    await expect(page.locator('body')).toHaveAttribute('data-camera-ready', 'true');
     await expect(page.locator('#assets li')).toHaveCount(declaredAssetCount);
     const screenshot = await page.locator('#viewport').screenshot();
     expect(pngHasVisibleVariation(screenshot)).toBe(true);

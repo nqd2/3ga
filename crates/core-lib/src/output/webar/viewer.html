@@ -26,7 +26,7 @@
       <p id="status">Loading manifest...</p>
       <div id="controls">
         <button id="toggle-scene" aria-pressed="true">Scene</button>
-        <button id="toggle-occlusion" aria-pressed="true">Occlusion</button>
+        <button id="toggle-occlusion" aria-pressed="false">Occlusion</button>
         <button id="toggle-navmesh" aria-pressed="true">NavMesh</button>
       </div>
       <ul id="assets"></ul>
@@ -48,22 +48,30 @@
       return bytes.byteLength;
     }
 
-    function hasWebGL() {
-      try {
-        return !!(window.WebGLRenderingContext && (canvas.getContext('webgl2') || canvas.getContext('webgl')));
-      } catch (_) {
-        return false;
-      }
-    }
-
     function setVisible(entity, visible) {
       if (!entity) return;
       entity.enabled = visible;
     }
 
+    function point3(value, fallback) {
+      const point = Array.isArray(value)
+        ? { x: value[0], y: value[1], z: value[2] }
+        : value;
+      const x = Number(point?.x);
+      const y = Number(point?.y);
+      const z = Number(point?.z);
+      return Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)
+        ? { x, y, z }
+        : fallback;
+    }
+
+    function isFiniteVec3(value) {
+      return Number.isFinite(value?.x) && Number.isFinite(value?.y) && Number.isFinite(value?.z);
+    }
+
     function fitCamera(camera, bounds) {
-      const min = bounds?.min || { x: -2, y: -1, z: -2 };
-      const max = bounds?.max || { x: 2, y: 2, z: 2 };
+      const min = point3(bounds?.min, { x: -2, y: -1, z: -2 });
+      const max = point3(bounds?.max, { x: 2, y: 2, z: 2 });
       const center = new pc.Vec3((min.x + max.x) * 0.5, (min.y + max.y) * 0.5, (min.z + max.z) * 0.5);
       const size = new pc.Vec3(max.x - min.x, max.y - min.y, max.z - min.z);
       const radius = Math.max(size.length() * 0.55, 2);
@@ -146,9 +154,9 @@
     }
 
     (async () => {
-      if (!window.pc || !hasWebGL()) {
+      if (!window.pc) {
         fallback.style.display = 'grid';
-        throw new Error('WebGL unavailable');
+        throw new Error('PlayCanvas runtime unavailable');
       }
       const manifestResponse = await fetch('manifest.json');
       if (!manifestResponse.ok) throw new Error(`manifest.json: HTTP ${manifestResponse.status}`);
@@ -182,12 +190,14 @@
       app.start();
 
       const view = fitCamera(camera, manifest.bounds);
+      document.body.dataset.cameraReady = String(isFiniteVec3(view.center) && Number.isFinite(view.radius));
       addOrbit(canvas, camera, view.center, view.radius);
       const [sceneEntity, occlusionEntity, navmeshEntity] = await Promise.all([
         loadGsplat(app, root, manifest.artifacts.scene),
         loadContainer(app, root, 'occlusion', manifest.artifacts.occlusionGlb),
         loadContainer(app, root, 'navmesh', manifest.artifacts.navmeshGlb)
       ]);
+      setVisible(occlusionEntity, false);
 
       document.getElementById('toggle-scene').onclick = (event) => {
         const pressed = event.currentTarget.getAttribute('aria-pressed') !== 'true';
@@ -209,6 +219,7 @@
       document.body.dataset.loaded = 'true';
     })().catch((error) => {
       statusEl.textContent = `Load failed: ${error.message}`;
+      document.body.dataset.cameraReady = 'false';
       document.body.dataset.loaded = 'false';
     });
   </script>

@@ -1,7 +1,7 @@
 pub mod context;
 pub mod voxelizer;
 
-pub use context::{init_wgpu, GpuSplat, VoxelUniforms};
+pub use context::{GpuSplat, VoxelUniforms, init_wgpu};
 pub use voxelizer::{voxelize_gpu, voxelize_gpu_blocking};
 
 #[derive(Clone)]

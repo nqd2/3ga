@@ -171,11 +171,9 @@ pub struct RecipeBundle {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AlignmentRecipe {
-    pub floor_points: Option<[[f32; 3]; 3]>,
-    #[serde(default)]
-    pub floor_fit_points: Option<Vec<[f32; 3]>>,
     #[serde(default)]
     pub up_axis: Option<UpAxis>,
+    pub floor_normal: Option<[f32; 3]>,
     pub scale_points: Option<[[f32; 3]; 2]>,
     pub scale_distance_meters: Option<f32>,
     pub origin: Option<[f32; 3]>,
@@ -200,7 +198,11 @@ pub struct EditRecipe {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "camelCase")]
+#[serde(
+    tag = "type",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum EditOperation {
     SelectAll,
     SelectNone,
@@ -219,6 +221,56 @@ pub enum EditOperation {
         coarse_voxel_size: f32,
         opacity_threshold: f32,
         seed_pos: [f32; 3],
+        #[serde(default = "default_filter_min_contribution")]
+        min_contribution: f32,
     },
-    FilterFloatersByVoxelContribution,
+    FilterFloatersByVoxelContribution {
+        #[serde(default = "default_filter_min_contribution")]
+        min_contribution: f32,
+    },
+}
+
+fn default_filter_min_contribution() -> f32 {
+    0.1
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn recipe_bundle_accepts_gui_camel_case_filter_cluster_fields() {
+        let recipe: RecipeBundle = serde_json::from_str(
+            r#"{
+              "editRecipe": {
+                "operations": [
+                  {
+                    "type": "filterCluster",
+                    "coarseVoxelSize": 0.1,
+                    "opacityThreshold": 0.1,
+                    "seedPos": [0.0, 1.0, 0.0],
+                    "minContribution": 0.1
+                  }
+                ]
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let operation = recipe.edit_recipe.unwrap().operations.remove(0);
+        match operation {
+            EditOperation::FilterCluster {
+                coarse_voxel_size,
+                opacity_threshold,
+                seed_pos,
+                min_contribution,
+            } => {
+                assert_eq!(coarse_voxel_size, 0.1);
+                assert_eq!(opacity_threshold, 0.1);
+                assert_eq!(seed_pos, [0.0, 1.0, 0.0]);
+                assert_eq!(min_contribution, 0.1);
+            }
+            other => panic!("expected filter cluster operation, got {other:?}"),
+        }
+    }
 }

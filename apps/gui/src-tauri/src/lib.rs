@@ -1,4 +1,5 @@
 mod commands;
+mod paths;
 
 use commands::AppState;
 
@@ -26,30 +27,35 @@ fn save_bundle(request: commands::SaveBundleRequest) -> Result<String, String> {
     commands::save_bundle(request)
 }
 
-#[tauri::command]
-fn preview_metadata(path: String) -> Result<serde_json::Value, String> {
-    commands::preview_metadata(path)
-}
 
 #[tauri::command]
 fn open_webar_viewer(app: tauri::AppHandle, path: String) -> Result<(), String> {
     commands::open_webar_viewer(app, path)
 }
 
+#[tauri::command]
+async fn export_edited_source(
+    request: commands::EditorSourceExportRequest,
+) -> Result<commands::EditorSourceExport, String> {
+    commands::export_edited_source(request).await
+}
+
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let wgpu_ctx = augmented_gaussian_core::gpu::init_wgpu();
-    let state = AppState { wgpu_ctx };
+    let state = AppState::new(wgpu_ctx);
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(state)
         .invoke_handler(tauri::generate_handler![
             load_source,
-            preview_metadata,
             process_job,
             cancel_job,
             save_bundle,
-            open_webar_viewer
+            open_webar_viewer,
+            export_edited_source
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

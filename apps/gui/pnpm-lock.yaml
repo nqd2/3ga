@@ -11,12 +11,18 @@ importers:
       '@astryxdesign/core':
         specifier: ^0.1.1
         version: 0.1.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@astryxdesign/theme-neutral':
+      '@astryxdesign/theme-stone':
         specifier: ^0.1.1
         version: 0.1.1(@astryxdesign/core@0.1.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
       '@tauri-apps/api':
         specifier: ^2.2.0
         version: 2.11.1
+      '@tauri-apps/plugin-dialog':
+        specifier: ^2.2.0
+        version: 2.7.1
+      lucide-react:
+        specifier: ^1.22.0
+        version: 1.22.0(react@19.2.7)
       playcanvas:
         specifier: ^2.0.0
         version: 2.20.1
@@ -83,6 +89,12 @@ packages:
 
   '@astryxdesign/theme-neutral@0.1.1':
     resolution: {integrity: sha512-B3+q0z4exOnT7AXTAEqHq1eVetWzkbkAU2SC3pdQgEGTqDt3kaqIYCbnVEjja6QUTjwHwQYrAh8LmdXFpRlNPg==}
+    peerDependencies:
+      '@astryxdesign/core': 0.1.1
+      react: '>=19'
+
+  '@astryxdesign/theme-stone@0.1.1':
+    resolution: {integrity: sha512-ZcTjr/UVoF2v/ba2XEsWiW1k70XDEVyBfxyxY1Kud9DlGwm/2//KWjJNKYxjPsDDJLxgjNdQPiEqewEcpySkog==}
     peerDependencies:
       '@astryxdesign/core': 0.1.1
       react: '>=19'
@@ -803,6 +815,9 @@ packages:
     resolution: {integrity: sha512-R8xGtMpwyetawSqm9kYOuMmEqkhUbvcUy8n0aNXIxollKBLESUu5f4Fx+64hgASYm1H+jSWq6jCW6zqTnH6hqQ==}
     engines: {node: '>= 10'}
     hasBin: true
+
+  '@tauri-apps/plugin-dialog@2.7.1':
+    resolution: {integrity: sha512-OK1UBXYt+ojcmxMktzzuyonYIFta8CmAASpX+CA+DTGK24KlHjhYI6x2iOJ/TjZF4N7/ACK1oFmEOjIY9IhzOQ==}
 
   '@types/babel__core@7.20.5':
     resolution: {integrity: sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA==}
@@ -1573,6 +1588,13 @@ snapshots:
       '@astryxdesign/core': 0.1.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       lucide-react: 1.22.0(react@19.2.7)
       react: 19.2.7
+    optional: true
+
+  '@astryxdesign/theme-stone@0.1.1(@astryxdesign/core@0.1.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)':
+    dependencies:
+      '@astryxdesign/core': 0.1.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      lucide-react: 1.22.0(react@19.2.7)
+      react: 19.2.7
 
   '@babel/code-frame@7.29.7':
     dependencies:
@@ -2139,6 +2161,10 @@ snapshots:
       '@tauri-apps/cli-win32-arm64-msvc': 2.11.4
       '@tauri-apps/cli-win32-ia32-msvc': 2.11.4
       '@tauri-apps/cli-win32-x64-msvc': 2.11.4
+
+  '@tauri-apps/plugin-dialog@2.7.1':
+    dependencies:
+      '@tauri-apps/api': 2.11.1
 
   '@types/babel__core@7.20.5':
     dependencies:
